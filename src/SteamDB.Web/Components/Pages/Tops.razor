@@ -1,0 +1,57 @@
+@page "/tops"
+@inherits AnalyticsPage
+
+<PageTitle>Топы</PageTitle>
+<MudText Typo="Typo.h4">Топы</MudText>
+<MudText Class="steam-muted mb-4">Спрос, качество отзывов, горячее, новые и онлайн. Обсуждаемые не считаются.</MudText>
+<MudStack Row="true" Class="mb-3">
+    <MudSelect T="string" @bind-Value="_period" Label="Период" Variant="Variant.Outlined" Margin="Margin.Dense" Style="width:220px">
+        <MudSelectItem T="string" Value="@("all")">Всё время</MudSelectItem>
+        <MudSelectItem T="string" Value="@("2y")">Последние 2 года</MudSelectItem>
+        <MudSelectItem T="string" Value="@("year")">Этот год</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="string" @bind-Value="_genre" Label="Жанр" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Style="width:220px">
+        @foreach (var genre in Genres)
+        {
+            <MudSelectItem T="string" Value="@genre">@genre</MudSelectItem>
+        }
+    </MudSelect>
+</MudStack>
+<MudTabs>
+    <MudTabPanel Text="По спросу"><GameList Games="Sorted(GameSort.MostReviews)" /></MudTabPanel>
+    <MudTabPanel Text="По отзывам"><GameList Games="Sorted(GameSort.ReviewQuality)" /></MudTabPanel>
+    <MudTabPanel Text="Горячее">
+        @if (!Snap.HasTwoSnapshotDays)
+        {
+            <MudAlert Severity="Severity.Info">@Labels.HotEmpty</MudAlert>
+        }
+        <GameList Games="Sorted(GameSort.Hot)" />
+    </MudTabPanel>
+    <MudTabPanel Text="Новые и растущие">
+        @if (!Snap.HasTwoSnapshotDays)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-2">Прирост отзывов пуст, пока нет двух дневных снимков. Ниже — просто новые игры.</MudAlert>
+        }
+        <GameList Games="Sorted(GameSort.ReviewGrowth)" />
+    </MudTabPanel>
+    <MudTabPanel Text="По онлайну"><GameList Games="Sorted(GameSort.Online)" /></MudTabPanel>
+</MudTabs>
+
+@code {
+    private string _period = "all";
+    private string? _genre;
+    private IEnumerable<string> Genres => Snap.Games.SelectMany(game => game.Genres).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(name => name);
+
+    private IReadOnlyList<GameRecord> Sorted(GameSort sort)
+    {
+        int? year = _period switch
+        {
+            "year" => Today.Year,
+            _ => null
+        };
+        var games = AnalyticsEngine.QueryGames(Snap, Window, new GameQuery { Genre = _genre, Year = year, Sort = sort }, Today);
+        if (_period == "2y")
+            games = games.Where(game => game.ReleaseYear is int value && value >= Today.Year - 1).ToList();
+        return games.Take(50).ToList();
+    }
+}

@@ -1,0 +1,94 @@
+@page "/games/{AppId:int}"
+@using ApexCharts
+@inherits AnalyticsPage
+
+<PageTitle>@(Insight?.Game.Name ?? "Игра")</PageTitle>
+@if (Insight is null)
+{
+    <MudAlert Severity="Severity.Info">Игра не найдена или скрыта фильтром 18+.</MudAlert>
+}
+else
+{
+        <div class="d-flex flex-wrap gap-5 mb-4">
+            @if (!string.IsNullOrWhiteSpace(Insight.Game.HeaderImage))
+            {
+                <img src="@Insight.Game.HeaderImage" alt="" class="steam-cover-lg" loading="lazy" referrerpolicy="no-referrer" />
+            }
+            <div style="flex:1; min-width:280px">
+                <MudText Typo="Typo.h4">@Insight.Game.Name</MudText>
+                <MudText Class="steam-muted mb-3">@Insight.Game.ShortDescription</MudText>
+                <div class="d-flex flex-wrap gap-1 mb-3">
+                    <MudChip T="string" Size="MudBlazor.Size.Small" Variant="Variant.Outlined">@(Insight.Game.IsFree ? "Бесплатно" : Fmt.Money(Insight.Game.PriceCents))</MudChip>
+                    <MudChip T="string" Size="MudBlazor.Size.Small" Variant="Variant.Outlined">@Labels.Status(Insight.Game.Status)</MudChip>
+                    <MudChip T="string" Size="MudBlazor.Size.Small" Variant="Variant.Outlined">@Labels.Deck(Insight.Game.Deck)</MudChip>
+                    @foreach (var genre in Insight.Game.Genres.Take(3))
+                    {
+                        <MudChip T="string" Size="MudBlazor.Size.Small" Color="MudBlazor.Color.Primary" Variant="Variant.Outlined">@genre</MudChip>
+                    }
+                </div>
+                <MudButton Href="@Insight.Game.Url" Target="_blank" Variant="Variant.Filled" Color="MudBlazor.Color.Primary" Size="MudBlazor.Size.Small" EndIcon="@Icons.Material.Filled.OpenInNew">Открыть в Steam</MudButton>
+                <table class="steam-kv mt-3">
+                    <tr><td>Разработчики</td><td>@(Insight.Game.Developers.Count == 0 ? "—" : string.Join(", ", Insight.Game.Developers))</td></tr>
+                    <tr><td>Издатели</td><td>@(Insight.Game.Publishers.Count == 0 ? "—" : string.Join(", ", Insight.Game.Publishers))</td></tr>
+                    <tr><td>Выход</td><td>@(Insight.Game.ReleaseDate?.ToString("d") ?? Fmt.I(Insight.Game.ReleaseYear))</td></tr>
+                    <tr><td>Карточка</td><td>@(Insight.Game.CardRead ? "прочитана" : "ещё без состава страницы")</td></tr>
+                </table>
+            </div>
+        </div>
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="6" sm="4" md="2"><MudPaper Class="pa-4 steam-card" Outlined="true"><Kpi Label="Отзывов" Value="@Fmt.I(Insight.Game.ReviewCount)" Large="true" Hint="@($"положительных {Fmt.P(Insight.Game.PositiveRatio)}")" /></MudPaper></MudItem>
+            <MudItem xs="6" sm="4" md="2"><MudPaper Class="pa-4 steam-card" Outlined="true"><Kpi Label="Качество" Value="@Fmt.P(Insight.Quality)" Large="true" Formula="@MetricCatalog.Get("quality").Formula" Tip="@MetricCatalog.Get("quality").Meaning" /></MudPaper></MudItem>
+            <MudItem xs="6" sm="4" md="2"><MudPaper Class="pa-4 steam-card" Outlined="true"><Kpi Label="Онлайн" Value="@Fmt.I(Insight.Game.CurrentPlayers)" Large="true" Hint="@($"пик {Fmt.I(Insight.Game.PeakPlayers)}")" /></MudPaper></MudItem>
+            <MudItem xs="6" sm="4" md="2"><MudPaper Class="pa-4 steam-card" Outlined="true"><Kpi Label="Лучше, чем" Value="@Fmt.P(Insight.BetterThan)" Large="true" Formula="@MetricCatalog.Get("better").Formula" Tip="@MetricCatalog.Get("better").Meaning" /></MudPaper></MudItem>
+            <MudItem xs="6" sm="4" md="2"><MudPaper Class="pa-4 steam-card" Outlined="true"><Kpi Label="Hot" Value="@(Insight.Hot is null ? "—" : Insight.Hot.Value.ToString("0.00"))" Large="true" Formula="@MetricCatalog.Get("hot").Formula" Tip="@MetricCatalog.Get("hot").Meaning" /></MudPaper></MudItem>
+        </MudGrid>
+    <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
+        @Insight.Reach.Caption: типичный охват @Fmt.N(Insight.Reach.Typical).
+        @if (!Insight.Reach.Calibrated && Insight.Reach.Low is not null)
+        {
+            <span> Диапазон доли отзывов @Fmt.N(Insight.Reach.Low)–@Fmt.N(Insight.Reach.High).</span>
+        }
+    </MudAlert>
+    @if (Insight.History.Select(point => point.Date).Distinct().Count() < 2)
+    {
+        <MudAlert Severity="Severity.Info">@Labels.HotEmpty История по дням появится после второго снимка.</MudAlert>
+    }
+    else
+    {
+        <ApexChart TItem="DailyPoint" Options="_line" Height="280">
+            <ApexPointSeries TItem="DailyPoint" Items="Insight.History" Name="Отзывы" SeriesType="SeriesType.Line" XValue="@(point => point.Date.ToString("dd.MM"))" YValue="@(point => (decimal?)point.ReviewCount)" />
+            <ApexPointSeries TItem="DailyPoint" Items="Insight.History" Name="Онлайн" SeriesType="SeriesType.Line" XValue="@(point => point.Date.ToString("dd.MM"))" YValue="@(point => (decimal?)point.CurrentPlayers)" />
+        </ApexChart>
+    }
+    <MudText Typo="Typo.h6" Class="mt-4">Позиции в топах тегов</MudText>
+    @if (Insight.Positions.Count == 0)
+    {
+        <MudText Typo="Typo.body2">Позиции появятся, когда игра попадёт на первую страницу популярной выдачи тега в ежедневном снимке.</MudText>
+    }
+    else
+    {
+        @foreach (var position in Insight.Positions)
+        {
+            <MudText>@position.Tag: место @position.Rank. Соседи: @(position.Neighbors.Count == 0 ? "—" : string.Join(", ", position.Neighbors.Select(game => game.Name)))</MudText>
+        }
+    }
+    <MudText Typo="Typo.h6" Class="mt-4">Похожие по общим тегам</MudText>
+    @if (Insight.Game.TagIds.Count == 0)
+    {
+        <MudText>Тегов нет: карточка годится для топов, но не для похожих, факторов и сочетаний.</MudText>
+    }
+    else
+    {
+        <GameList Games="Insight.Similar" />
+    }
+}
+
+@code {
+    [Parameter] public int AppId { get; set; }
+    private GameInsight? Insight => AnalyticsEngine.Inspect(Snap, Window, AppId, Today);
+    private ApexChartOptions<DailyPoint> _line = new()
+    {
+        Chart = new Chart { Background = "transparent", Toolbar = new Toolbar { Show = false } },
+        Theme = new Theme { Mode = Mode.Dark }
+    };
+}

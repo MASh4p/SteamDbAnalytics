@@ -1,0 +1,27 @@
+<MudTooltip Arrow="true" Placement="Placement.Top">
+    <ChildContent>
+        <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" Class="steam-tip-icon ml-1" />
+    </ChildContent>
+    <TooltipContent>
+        <div style="max-width: 420px; text-align: left;">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <MudText Typo="Typo.subtitle2">@Title</MudText>
+            }
+            @if (!string.IsNullOrEmpty(Formula))
+            {
+                <div class="steam-formula my-1">@Formula</div>
+            }
+            @if (!string.IsNullOrEmpty(Text))
+            {
+                <MudText Typo="Typo.caption">@Text</MudText>
+            }
+        </div>
+    </TooltipContent>
+</MudTooltip>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Formula { get; set; }
+    [Parameter] public string? Text { get; set; }
+}

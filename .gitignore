@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+data/
+*.user
+*.suo
+src/SteamDB.Web/wwwroot/_content/
+src/SteamDB.Web/wwwroot/_framework/
+src/SteamDB.Web/wwwroot/Components/

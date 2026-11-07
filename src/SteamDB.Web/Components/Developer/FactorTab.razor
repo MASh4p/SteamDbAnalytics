@@ -1,0 +1,53 @@
+@inherits AnalyticsPage
+
+<MudAlert Severity="Severity.Warning" Class="mb-3">@Labels.CorrelationNote</MudAlert>
+@{
+    var report = AnalyticsEngine.Factors(Snap, Window, Today);
+}
+<MudGrid Class="mb-3">
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">Прочитанных карточек<MudText Typo="Typo.h6">@report.SampleSize</MudText></MudPaper></MudItem>
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">R²<MudText Typo="Typo.h6">@(report.ModelReady ? Fmt.N(report.RSquared, "0.00") : "—")</MudText></MudPaper></MudItem>
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true"><MetricLabel Id="multiplier" /> возраст ×2<MudText Typo="Typo.h6">@(report.AgeDoubling is null ? "—" : "×" + report.AgeDoubling.Value.ToString("0.00"))</MudText></MudPaper></MudItem>
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">Скриншоты ×2<MudText Typo="Typo.h6">@(report.ScreenshotDoubling is null ? "—" : "×" + report.ScreenshotDoubling.Value.ToString("0.00"))</MudText></MudPaper></MudItem>
+</MudGrid>
+@if (!report.ModelReady)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-3">Модель не считается, пока прочитанных карточек меньше 200. Медианы и шансы с признаком и без уже можно смотреть.</MudAlert>
+}
+<MudTable Items="report.Rows" Dense="true" Hover="true" RowsPerPage="20">
+    <HeaderContent>
+        <MudTh>Фактор</MudTh>
+        <MudTh>Группа</MudTh>
+        <MudTh>Игр с</MudTh>
+        <MudTh>Игр без</MudTh>
+        <MudTh>Медиана с</MudTh>
+        <MudTh>Медиана без</MudTh>
+        <MudTh>Шанс с</MudTh>
+        <MudTh>Шанс без</MudTh>
+        <MudTh><MetricLabel Id="uplift" /></MudTh>
+        <MudTh><MetricLabel Id="multiplier" /></MudTh>
+        <MudTh>p</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>@context.Group</MudTd>
+        <MudTd>@context.WithCount</MudTd>
+        <MudTd>@context.WithoutCount</MudTd>
+        <MudTd>@Fmt.N(context.MedianWith)</MudTd>
+        <MudTd>@Fmt.N(context.MedianWithout)</MudTd>
+        <MudTd>@Fmt.Chance(context.ChanceWith)</MudTd>
+        <MudTd>@Fmt.Chance(context.ChanceWithout)</MudTd>
+        <MudTd>@Fmt.N(context.Uplift, "0.00")</MudTd>
+        <MudTd>@(context.Multiplier is null ? "—" : "×" + context.Multiplier.Value.ToString("0.00") + (context.Starred ? "*" : ""))</MudTd>
+        <MudTd>@(context.PValue is null ? "—" : context.PValue.Value.ToString("0.000"))</MudTd>
+    </RowTemplate>
+    <PagerContent><MudTablePager /></PagerContent>
+</MudTable>
+<MudText Typo="Typo.h6" Class="mt-4"><MetricLabel Id="spearman" /></MudText>
+<MudTable Items="report.Correlations" Dense="true">
+    <HeaderContent><MudTh>Признак</MudTh><MudTh>ρ</MudTh></HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>@Fmt.N(context.Rho, "0.00")</MudTd>
+    </RowTemplate>
+</MudTable>

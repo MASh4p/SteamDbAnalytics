@@ -1,0 +1,244 @@
+html, body {
+    background: #0e141b;
+    color: #e8eef4;
+}
+
+h1:focus {
+    outline: none;
+}
+
+a {
+    color: #67c1f5;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.steam-logo {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.steam-logo span {
+    color: #67c1f5;
+}
+
+.steam-appbar {
+    border-bottom: 1px solid #2a3a4a;
+}
+
+.mud-drawer .mud-nav-menu .mud-tooltip-root {
+    display: block;
+    width: 100%;
+}
+
+.mud-drawer.mud-drawer-mini.mud-drawer-closed .mud-nav-link {
+    justify-content: center;
+    padding-inline: 12px;
+}
+
+.mud-drawer.mud-drawer-mini.mud-drawer-closed .mud-nav-link-text {
+    display: none;
+}
+
+.mud-drawer.mud-drawer-mini.mud-drawer-closed .mud-nav-link-icon {
+    margin-inline-end: 0;
+}
+
+.steam-min-select {
+    width: 148px;
+    min-width: 148px;
+    flex: 0 0 auto;
+    margin-top: 0 !important;
+}
+
+.steam-min-select .mud-input-control-input-container {
+    margin-top: 0;
+}
+
+.steam-card {
+    height: 100%;
+    background: #1b2838;
+}
+
+.steam-kpi-value {
+    font-size: 1.7rem;
+    font-weight: 600;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.steam-kpi-value.small {
+    font-size: 1.15rem;
+}
+
+.steam-kpi-label {
+    color: #a8b6c4;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.steam-kpi-hint {
+    color: rgba(232, 238, 244, 0.5);
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+
+.steam-formula {
+    font-family: Consolas, "Cascadia Mono", monospace;
+    white-space: pre-wrap;
+    font-size: 0.78rem;
+}
+
+.steam-tip-icon {
+    opacity: 0.55;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.steam-thumb {
+    width: 92px;
+    height: 43px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #171a21;
+    display: block;
+}
+
+.steam-game-cell {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 10px;
+}
+
+.steam-table {
+    width: 100%;
+}
+
+.steam-table th.steam-num,
+.steam-table td.steam-num {
+    text-align: right !important;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.steam-table th.steam-game,
+.steam-table td.steam-game {
+    text-align: left !important;
+}
+
+.steam-cover-lg {
+    width: 100%;
+    max-width: 460px;
+    border-radius: 8px;
+    background: #171a21;
+}
+
+.steam-insight {
+    border-left: 3px solid #67c1f5;
+    padding: 4px 0 4px 12px;
+    margin-bottom: 8px;
+}
+
+.steam-muted {
+    color: #a8b6c4;
+}
+
+.steam-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.steam-quadrant {
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.steam-quadrant.blue { color: #67c1f5; }
+.steam-quadrant.red { color: #ff6b6b; }
+.steam-quadrant.quiet { color: #8fd18f; }
+.steam-quadrant.trap { color: #f5b84a; }
+
+.steam-game-title {
+    font-weight: 600;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.steam-game-sub {
+    font-size: 0.76rem;
+    color: #a8b6c4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.steam-table .mud-table-cell {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.steam-section-title {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #a8b6c4;
+    margin-bottom: 8px;
+}
+
+.steam-log {
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 0.78rem;
+    max-height: 420px;
+    overflow-y: auto;
+    background: #0e141b;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+.steam-kv td {
+    padding: 3px 12px 3px 0;
+    vertical-align: top;
+}
+
+.steam-kv td:first-child {
+    color: #a8b6c4;
+    white-space: nowrap;
+}
+
+.blazor-error-boundary {
+    background: #b32121;
+    padding: 1rem 1rem 1rem 1.5rem;
+    color: white;
+}
+
+.blazor-error-boundary::after {
+    content: "Произошла ошибка при отрисовке компонента.";
+}
+
+#blazor-error-ui {
+    background: #1b2838;
+    color: #e8eef4;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}

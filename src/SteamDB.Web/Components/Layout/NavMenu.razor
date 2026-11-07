@@ -1,0 +1,16 @@
+<MudNavMenu Class="pt-2">
+    <NavItem Href="/overview" Icon="@Icons.Material.Outlined.Dashboard" Text="Обзор" Mini="Mini" />
+    <NavItem Href="/games" Icon="@Icons.Material.Outlined.SportsEsports" Text="Игры" Mini="Mini" />
+    <NavItem Href="/tops" Icon="@Icons.Material.Outlined.EmojiEvents" Text="Топы" Mini="Mini" />
+    <NavItem Href="/segments" Icon="@Icons.Material.Outlined.LocalOffer" Text="Теги и жанры" Mini="Mini" />
+    <MudDivider Class="my-2" />
+    <NavItem Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Insights" Text="Для разработчика" Mini="Mini" />
+    <NavItem Href="/publishers" Icon="@Icons.Material.Outlined.Groups" Text="Разработчики" Mini="Mini" />
+    <NavItem Href="/my" Icon="@Icons.Material.Outlined.TrackChanges" Text="Моя игра" Mini="Mini" />
+    <MudDivider Class="my-2" />
+    <NavItem Href="/collection" Icon="@Icons.Material.Outlined.CloudSync" Text="Сбор данных" Mini="Mini" />
+</MudNavMenu>
+
+@code {
+    [Parameter] public bool Mini { get; set; }
+}

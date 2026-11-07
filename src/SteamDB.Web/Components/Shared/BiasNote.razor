@@ -1,0 +1,8 @@
+@if (!Cache.Current.DeepCollectionComplete)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-4">@Labels.Bias</MudAlert>
+}
+
+@code {
+    [Inject] private IDatasetCache Cache { get; set; } = default!;
+}

@@ -1,0 +1,22 @@
+@page "/segments"
+@inherits AnalyticsPage
+
+<PageTitle>Теги и жанры</PageTitle>
+<MudText Typo="Typo.h4">Теги и жанры</MudText>
+<MudText Class="steam-muted mb-4">Сегменты магазина: медиана, шанс, тренд и Opportunity. Малые выборки скрыты.</MudText>
+<BiasNote />
+<MudTabs>
+    <MudTabPanel Text="Жанры"><SegmentGrid Items="Of(SegmentKind.Genre)" FileName="genres" /></MudTabPanel>
+    <MudTabPanel Text="Теги"><SegmentGrid Items="Of(SegmentKind.Tag)" FileName="tags" /></MudTabPanel>
+    <MudTabPanel Text="Категории"><SegmentGrid Items="Of(SegmentKind.Category)" FileName="categories" /></MudTabPanel>
+    <MudTabPanel Text="Платформы и форматы"><SegmentGrid Items="Platforms" FileName="formats" /></MudTabPanel>
+    <MudTabPanel Text="Языки"><SegmentGrid Items="Of(SegmentKind.Language)" FileName="languages" /></MudTabPanel>
+    <MudTabPanel Text="Каталог тегов Steam"><SegmentGrid Items="Of(SegmentKind.Tag)" FileName="tag-catalog" Catalog="true" /></MudTabPanel>
+</MudTabs>
+
+@code {
+    private IReadOnlyList<ScoredSegment> Of(SegmentKind kind) => AnalyticsEngine.Segments(Snap, Window, Today, kind);
+    private IReadOnlyList<ScoredSegment> Platforms => AnalyticsEngine.Segments(Snap, Window, Today, SegmentKind.Platform)
+        .Concat(AnalyticsEngine.Segments(Snap, Window, Today, SegmentKind.Format))
+        .ToList();
+}

@@ -1,0 +1,79 @@
+@using ApexCharts
+@inherits AnalyticsPage
+
+<MudButtonGroup Class="mb-3" Variant="Variant.Outlined">
+    <MudButton Color="@(_mode == "tags" ? MudBlazor.Color.Primary : MudBlazor.Color.Default)" OnClick="@(() => _mode = "tags")">Теги</MudButton>
+    <MudButton Color="@(_mode == "genres" ? MudBlazor.Color.Primary : MudBlazor.Color.Default)" OnClick="@(() => _mode = "genres")">Жанры</MudButton>
+    <MudButton Color="@(_mode == "formats" ? MudBlazor.Color.Primary : MudBlazor.Color.Default)" OnClick="@(() => _mode = "formats")">Форматы</MudButton>
+    <MudButton Color="@(_mode == "all" ? MudBlazor.Color.Primary : MudBlazor.Color.Default)" OnClick="@(() => _mode = "all")">Всё вместе</MudButton>
+</MudButtonGroup>
+@if (Points.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">Недостаточно сегментов для карты. После быстрого старта здесь появятся теги с медианой и конкуренцией.</MudAlert>
+}
+else
+{
+    <ApexChart TItem="BubblePoint" Options="_options" Height="460">
+        @foreach (var group in Groups)
+        {
+            <ApexPointSeries TItem="BubblePoint" Items="group" Name="@group[0].Quadrant" SeriesType="SeriesType.Scatter" XValue="@(point => point.X)" YValue="@(point => (decimal?)point.Y)" />
+        }
+    </ApexChart>
+    <MudText Typo="Typo.caption">Ось X — log(1 + конкуренция), ось Y — спрос. Цвет точки — квадрант. Opportunity — в колонках ниже.</MudText>
+}
+<MudGrid Class="mt-4">
+    @foreach (var quadrant in Enum.GetValues<QuadrantKind>())
+    {
+        <MudItem xs="12" md="3">
+            <MudText Typo="Typo.subtitle1">@Labels.Quadrant(quadrant)</MudText>
+            @foreach (var item in Visible.Where(row => row.Quadrant == quadrant).Take(5))
+            {
+                <MudText Typo="Typo.body2">@item.Metrics.Name — медиана @Fmt.N(item.Metrics.MedianReviews), Opportunity @item.Opportunity.ToString("0")</MudText>
+            }
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private string _mode = "tags";
+    private ApexChartOptions<BubblePoint> _options = new()
+    {
+        Chart = new Chart { Background = "transparent", Toolbar = new Toolbar { Show = false } },
+        Theme = new Theme { Mode = Mode.Dark }
+    };
+
+    private IReadOnlyList<ScoredSegment> Visible
+    {
+        get
+        {
+            var all = AnalyticsEngine.Segments(Snap, Window, Today, null).Where(item => !item.Metrics.SmallSample).ToList();
+            return _mode switch
+            {
+                "tags" => all.Where(item => item.Metrics.Kind == SegmentKind.Tag).ToList(),
+                "genres" => all.Where(item => item.Metrics.Kind == SegmentKind.Genre).ToList(),
+                "formats" => all.Where(item => item.Metrics.Kind is SegmentKind.Format or SegmentKind.Platform or SegmentKind.Category or SegmentKind.Language).ToList(),
+                _ => all
+            };
+        }
+    }
+
+    private List<BubblePoint> Points => Visible.Select(item => new BubblePoint
+    {
+        Name = item.Metrics.Name,
+        Quadrant = Labels.Quadrant(item.Quadrant),
+        X = (decimal)Math.Log(1 + Math.Max(0, item.Metrics.CompetitionSize ?? 0)),
+        Y = (decimal)(item.Metrics.Demand ?? 0),
+        Z = (decimal)Math.Max(1, item.Opportunity)
+    }).ToList();
+
+    private IEnumerable<List<BubblePoint>> Groups => Points.GroupBy(point => point.Quadrant).Select(group => group.ToList());
+
+    private sealed class BubblePoint
+    {
+        public string Name { get; set; } = "";
+        public string Quadrant { get; set; } = "";
+        public decimal X { get; set; }
+        public decimal Y { get; set; }
+        public decimal Z { get; set; }
+    }
+}

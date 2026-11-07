@@ -1,0 +1,33 @@
+<MudTable Items="Games" Hover="true" Dense="true" RowsPerPage="15" Elevation="0" Class="steam-table" Breakpoint="Breakpoint.None">
+    <HeaderContent>
+        <MudTh Class="steam-game">Игра</MudTh>
+        <MudTh Class="steam-num">Отзывов</MudTh>
+        <MudTh Class="steam-num"><MetricLabel Id="quality" /></MudTh>
+        <MudTh Class="steam-num">Онлайн</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd Class="steam-game">
+            <div class="steam-game-cell">
+                @if (!string.IsNullOrWhiteSpace(context.HeaderImage))
+                {
+                    <img src="@context.HeaderImage" alt="" class="steam-thumb" loading="lazy" referrerpolicy="no-referrer" />
+                }
+                else
+                {
+                    <span class="steam-thumb"></span>
+                }
+                <div>
+                    <MudLink Href="@($"/games/{context.AppId}")" Class="steam-game-title">@context.Name</MudLink>
+                    <div class="steam-game-sub">@string.Join(", ", context.Developers.Take(2))</div>
+                </div>
+            </div>
+        </MudTd>
+        <MudTd Class="steam-num">@Fmt.I(context.ReviewCount)</MudTd>
+        <MudTd Class="steam-num">@Fmt.P(context.PositiveRatio)</MudTd>
+        <MudTd Class="steam-num">@Fmt.I(context.CurrentPlayers)</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [Parameter] public IReadOnlyList<GameRecord> Games { get; set; } = [];
+}

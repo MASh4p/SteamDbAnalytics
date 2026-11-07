@@ -1,0 +1,26 @@
+@inherits AnalyticsPage
+
+@{
+    var rows = AnalyticsEngine.Formats(Snap, Window, Today);
+    var groups = rows.GroupBy(row => row.Group);
+}
+@foreach (var group in groups)
+{
+    <MudText Typo="Typo.h6" Class="mt-3">@group.Key</MudText>
+    <MudTable Items="group" Dense="true" Hover="true">
+        <HeaderContent>
+            <MudTh>Формат</MudTh>
+            <MudTh><MetricLabel Id="median" /></MudTh>
+            <MudTh><MetricLabel Id="chance" /></MudTh>
+            <MudTh>К шансу Steam</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>@Fmt.N(context.Metrics.MedianReviews)</MudTd>
+            <MudTd>@Fmt.Chance(context.Metrics.Chance)</MudTd>
+            <MudTd>@(context.ChanceRatio is null ? "—" : context.ChanceRatio.Value.ToString("0.00"))</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+<MudText Typo="Typo.h6" Class="mt-4">Полная таблица</MudText>
+<SegmentGrid Items="AnalyticsEngine.Segments(Snap, Window, Today, null).Where(item => item.Metrics.Kind is SegmentKind.Format or SegmentKind.Platform or SegmentKind.Category or SegmentKind.Language).ToList()" FileName="formats" />

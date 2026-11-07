@@ -1,0 +1,109 @@
+@page "/games"
+@inherits AnalyticsPage
+
+<PageTitle>Игры</PageTitle>
+<MudText Typo="Typo.h4">Игры</MudText>
+<MudText Class="steam-muted mb-4">Поиск по собранной базе. Сортировки «горячее» и «прирост» пустые, пока нет двух дневных снимков.</MudText>
+<MudGrid Class="mb-3">
+    <MudItem xs="12" md="3"><MudTextField @bind-Value="_text" Label="Поиск" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" /></MudItem>
+    <MudItem xs="6" md="2"><MudSelect T="string" @bind-Value="_genre" Label="Жанр" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">@foreach (var genre in Genres) { <MudSelectItem T="string" Value="@genre">@genre</MudSelectItem> }</MudSelect></MudItem>
+    <MudItem xs="6" md="2"><MudSelect T="int?" @bind-Value="_tag" Label="Тег" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">@foreach (var tag in Tags) { <MudSelectItem T="int?" Value="@tag.Id">@tag.Name</MudSelectItem> }</MudSelect></MudItem>
+    <MudItem xs="6" md="2"><MudSelect T="string" @bind-Value="_platform" Label="Платформа" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"><MudSelectItem T="string" Value="@("windows")">Windows</MudSelectItem><MudSelectItem T="string" Value="@("mac")">macOS</MudSelectItem><MudSelectItem T="string" Value="@("linux")">Linux</MudSelectItem></MudSelect></MudItem>
+    <MudItem xs="6" md="2"><MudSelect T="string" @bind-Value="_price" Label="Цена" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">@foreach (var shelf in Taxonomy.Shelves) { <MudSelectItem T="string" Value="@shelf.Key">@shelf.Name</MudSelectItem> }</MudSelect></MudItem>
+    <MudItem xs="6" md="1"><MudNumericField T="int?" @bind-Value="_year" Label="Год" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+    <MudItem xs="6" md="2"><MudSelect T="DeckStatus?" @bind-Value="_deck" Label="Steam Deck" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"><MudSelectItem T="DeckStatus?" Value="DeckStatus.Verified">Проверена</MudSelectItem><MudSelectItem T="DeckStatus?" Value="DeckStatus.Playable">Играбельна</MudSelectItem></MudSelect></MudItem>
+    <MudItem xs="6" md="2"><MudSwitch @bind-Value="_early" Color="Color.Primary">Ранний доступ</MudSwitch></MudItem>
+    <MudItem xs="12" md="3">
+        <MudSelect T="GameSort" @bind-Value="_sort" Label="Сортировка" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem Value="GameSort.MostReviews">Больше отзывов</MudSelectItem>
+            <MudSelectItem Value="GameSort.ReviewQuality">Качество отзывов</MudSelectItem>
+            <MudSelectItem Value="GameSort.Hot">Горячее</MudSelectItem>
+            <MudSelectItem Value="GameSort.ReviewGrowth">Прирост отзывов</MudSelectItem>
+            <MudSelectItem Value="GameSort.Newest">Новые</MudSelectItem>
+            <MudSelectItem Value="GameSort.Online">Онлайн</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+@if (_sort is GameSort.Hot or GameSort.ReviewGrowth && !Snap.HasTwoSnapshotDays)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-3">@Labels.HotEmpty</MudAlert>
+}
+<MudTable Items="Rows" Hover="true" Dense="true" RowsPerPage="25" Elevation="0" Class="steam-table" Breakpoint="Breakpoint.None">
+    <HeaderContent>
+        <MudTh Class="steam-game">Игра</MudTh>
+        <MudTh Class="steam-num">Отзывов</MudTh>
+        <MudTh Class="steam-num"><MetricLabel Id="quality" /></MudTh>
+        <MudTh Class="steam-num">Онлайн</MudTh>
+        <MudTh Class="steam-num"><MetricLabel Id="peak" /></MudTh>
+        <MudTh Class="steam-num"><MetricLabel Id="hot" /></MudTh>
+        <MudTh Class="steam-num">Год</MudTh>
+        <MudTh Class="steam-num">Цена</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd Class="steam-game">
+            <div class="steam-game-cell">
+                @if (!string.IsNullOrWhiteSpace(context.Game.HeaderImage))
+                {
+                    <img src="@context.Game.HeaderImage" alt="" class="steam-thumb" loading="lazy" referrerpolicy="no-referrer" />
+                }
+                else
+                {
+                    <span class="steam-thumb"></span>
+                }
+                <div>
+                    <MudLink Href="@($"/games/{context.Game.AppId}")" Class="steam-game-title">@context.Game.Name</MudLink>
+                    <div class="steam-game-sub">@string.Join(", ", context.Game.Developers.Take(2))</div>
+                </div>
+            </div>
+        </MudTd>
+        <MudTd Class="steam-num">@Fmt.I(context.Game.ReviewCount)</MudTd>
+        <MudTd Class="steam-num">@Fmt.P(context.Quality)</MudTd>
+        <MudTd Class="steam-num">@Fmt.I(context.Game.CurrentPlayers)</MudTd>
+        <MudTd Class="steam-num">@Fmt.I(context.Game.PeakPlayers)</MudTd>
+        <MudTd Class="steam-num">@(context.Hot is null ? "—" : context.Hot.Value.ToString("0.00"))</MudTd>
+        <MudTd Class="steam-num">@(context.Game.ReleaseYear?.ToString() ?? "—")</MudTd>
+        <MudTd Class="steam-num">@(context.Game.IsFree ? "Бесплатно" : Fmt.Money(context.Game.PriceCents))</MudTd>
+    </RowTemplate>
+    <PagerContent><MudTablePager /></PagerContent>
+</MudTable>
+
+@code {
+    private string? _text;
+    private string? _genre;
+    private int? _tag;
+    private string? _platform;
+    private string? _price;
+    private int? _year;
+    private DeckStatus? _deck;
+    private bool _early;
+    private GameSort _sort = GameSort.MostReviews;
+
+    private IEnumerable<string> Genres => Snap.Games.SelectMany(game => game.Genres).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(name => name);
+    private IEnumerable<(int Id, string Name)> Tags => Snap.Segments.Where(segment => segment.SteamTagId is not null).Select(segment => (Id: segment.SteamTagId!.Value, Name: segment.Name)).Distinct().OrderBy(item => item.Name);
+
+    private IReadOnlyList<Row> Rows
+    {
+        get
+        {
+            var games = AnalyticsEngine.QueryGames(Snap, Window, new GameQuery
+            {
+                Text = _text,
+                Genre = _genre,
+                TagId = _tag,
+                Platform = _platform,
+                PriceShelfKey = _price,
+                Year = _year,
+                Deck = _deck,
+                EarlyAccessOnly = _early,
+                Sort = _sort
+            }, Today);
+            var prior = games.Where(game => game.PositiveRatio is not null && game.ReviewCount is > 0).Select(game => game.PositiveRatio!.Value).DefaultIfEmpty(0.8).Average();
+            return games.Take(500).Select(game => new Row(
+                game,
+                game.PositiveRatio is null || game.ReviewCount is null ? null : Statistics.BayesianPositive(game.ReviewCount.Value, game.PositiveRatio.Value, prior, Window.BayesianM),
+                Statistics.Hot(Snap.History.TryGetValue(game.AppId, out var history) ? history : [], game.ReleaseDate, Today, Window.HotOnlineWeight, Window.HotPositionWeight, Window.HotAgeExponent))).ToList();
+        }
+    }
+
+    private sealed record Row(GameRecord Game, double? Quality, double? Hot);
+}

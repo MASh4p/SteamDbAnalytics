@@ -1,0 +1,135 @@
+@page "/my"
+@inherits AnalyticsPage
+@inject IMyGames Mine
+
+<PageTitle>Моя игра</PageTitle>
+<MudText Typo="Typo.h4" Class="mb-3">Моя игра</MudText>
+<MudStack Row="true" Class="mb-3">
+    <MudNumericField T="int" @bind-Value="_appId" Label="AppID" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Add">Следить</MudButton>
+</MudStack>
+<MudTable Items="Tracked" Dense="true" Hover="true">
+    <HeaderContent>
+        <MudTh>Игра</MudTh>
+        <MudTh>Позиции</MudTh>
+        <MudTh>История</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>
+            @if (Snap.ByAppId.TryGetValue(context, out var game))
+            {
+                <MudLink Href="@($"/games/{context}")">@game.Name</MudLink>
+            }
+            else
+            {
+                @context
+            }
+        </MudTd>
+        <MudTd>@Positions(context)</MudTd>
+        <MudTd>@History(context)</MudTd>
+        <MudTd><MudButton Size="Size.Small" OnClick="@(() => Mine.RemoveAsync(context))">Убрать</MudButton></MudTd>
+    </RowTemplate>
+</MudTable>
+@if (!Snap.HasTwoSnapshotDays)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-3">@Labels.HotEmpty</MudAlert>
+}
+
+<MudText Typo="Typo.h6" Class="mt-6">Ключ Steam Web API</MudText>
+<MudText Typo="Typo.body2" Class="mb-2">Необязателен. Хранится зашифрованным в каталоге data и не уходит никуда, кроме запроса статистики ваших приложений по вашей кнопке. Чужие appid этим ключом не спрашиваются. Без ключа оценка охвата остаётся на доле 2%.</MudText>
+<MudText Typo="Typo.body2">@( _hasKey ? "Ключ сохранён." : "Ключ не задан.")</MudText>
+<MudStack Row="true" Class="mt-2">
+    <MudTextField @bind-Value="_key" Label="Ключ" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:420px" />
+    <MudButton Variant="Variant.Outlined" OnClick="SaveKey">Сохранить</MudButton>
+    <MudButton Variant="Variant.Text" OnClick="Forget">Забыть</MudButton>
+</MudStack>
+<MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="Calibrate">Снять калибровку по своим играм</MudButton>
+@if (!string.IsNullOrWhiteSpace(_message))
+{
+    <MudAlert Severity="@(_offer?.Accepted == true ? Severity.Success : Severity.Info)" Class="mt-3">
+        @_message
+        @if (_offer?.Accepted == true && _offer.UnitsPerReview is double ratio)
+        {
+            <MudButton Class="ml-2" Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Apply(ratio))">Применить ко всем оценкам охвата</MudButton>
+        }
+    </MudAlert>
+}
+
+@code {
+    private int _appId;
+    private string _key = "";
+    private bool _hasKey;
+    private bool _busy;
+    private string? _message;
+    private CalibrationOffer? _offer;
+    private IReadOnlyList<int> Tracked { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Tracked = await Mine.TrackedAsync();
+        _hasKey = await Mine.HasKeyAsync();
+    }
+
+    private async Task Add()
+    {
+        if (_appId <= 0)
+            return;
+        await Mine.AddAsync(_appId);
+        Tracked = await Mine.TrackedAsync();
+    }
+
+    private string Positions(int appId)
+    {
+        var insight = AnalyticsEngine.Inspect(Snap, Window, appId, Today);
+        return insight is null || insight.Positions.Count == 0
+            ? "—"
+            : string.Join(", ", insight.Positions.Select(item => $"{item.Tag} #{item.Rank}"));
+    }
+
+    private string History(int appId)
+    {
+        if (!Snap.History.TryGetValue(appId, out var points) || points.Count == 0)
+            return "снимков нет";
+        var ordered = points.OrderBy(point => point.Date).ToList();
+        return $"{ordered.Count} сн., отзывы {Fmt.I(ordered[0].ReviewCount)} → {Fmt.I(ordered[^1].ReviewCount)}, онлайн {Fmt.I(ordered[^1].CurrentPlayers)}";
+    }
+
+    private async Task SaveKey()
+    {
+        try
+        {
+            await Mine.SaveKeyAsync(_key);
+            _key = "";
+            _hasKey = true;
+            _message = "Ключ сохранён локально.";
+            _offer = null;
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+        }
+    }
+
+    private async Task Forget()
+    {
+        await Mine.ForgetKeyAsync();
+        _hasKey = false;
+        _message = "Ключ удалён. Калибровка, если уже применена, остаётся в настройках, новую снять нельзя.";
+    }
+
+    private async Task Calibrate()
+    {
+        _busy = true;
+        _offer = await Mine.CalibrateAsync();
+        _message = _offer.Message;
+        _busy = false;
+    }
+
+    private async Task Apply(double ratio)
+    {
+        await Mine.ApplyCalibrationAsync(ratio);
+        _message = "Калибровка применена ко всем оценкам охвата. Подпись остаётся «оценка по своим играм».";
+    }
+}

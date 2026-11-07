@@ -1,0 +1,7 @@
+<span>@Info.Name</span>
+<FormulaTip Title="@Info.Name" Formula="@Info.Formula" Text="@Info.Meaning" />
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    private MetricInfo Info => MetricCatalog.Get(Id);
+}

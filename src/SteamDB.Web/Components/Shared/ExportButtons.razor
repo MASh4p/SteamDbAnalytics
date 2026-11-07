@@ -1,0 +1,18 @@
+<MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+    <MudButton OnClick="SaveCsv">CSV</MudButton>
+    <MudButton OnClick="SaveExcel">Excel</MudButton>
+</MudButtonGroup>
+
+@code {
+    [Parameter, EditorRequired] public string FileName { get; set; } = "export";
+    [Parameter, EditorRequired] public IReadOnlyList<string> Headers { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<IReadOnlyList<string?>> Rows { get; set; } = [];
+    [Inject] private ITableExport Export { get; set; } = default!;
+    [Inject] private IJSRuntime Js { get; set; } = default!;
+
+    private Task SaveCsv() => Download(FileName + ".csv", "text/csv;charset=utf-8", Export.Csv(Headers, Rows));
+    private Task SaveExcel() => Download(FileName + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Export.Excel(FileName, Headers, Rows));
+
+    private Task Download(string name, string type, byte[] bytes) =>
+        Js.InvokeVoidAsync("steamdbDownload", name, type, Convert.ToBase64String(bytes)).AsTask();
+}

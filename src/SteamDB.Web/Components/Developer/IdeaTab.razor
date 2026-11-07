@@ -1,0 +1,106 @@
+@inherits AnalyticsPage
+@inject IIdeaSearch Search
+
+<MudGrid>
+    <MudItem xs="12" md="4"><MudSelect T="int" Label="Теги" MultiSelection="true" SelectedValues="_tags" SelectedValuesChanged="OnTags" Variant="Variant.Outlined">@foreach (var tag in TagOptions) { <MudSelectItem T="int" Value="@tag.Id">@tag.Name</MudSelectItem> }</MudSelect></MudItem>
+    <MudItem xs="12" md="2"><MudSelect T="string" @bind-Value="_genre" Label="Жанр" Clearable="true" Variant="Variant.Outlined">@foreach (var genre in Genres) { <MudSelectItem T="string" Value="@genre">@genre</MudSelectItem> }</MudSelect></MudItem>
+    <MudItem xs="12" md="2"><MudSelect T="string" @bind-Value="_platform" Label="Платформа" Clearable="true" Variant="Variant.Outlined"><MudSelectItem T="string" Value="@("windows")">Windows</MudSelectItem><MudSelectItem T="string" Value="@("mac")">macOS</MudSelectItem><MudSelectItem T="string" Value="@("linux")">Linux</MudSelectItem></MudSelect></MudItem>
+    <MudItem xs="12" md="2"><MudSelect T="string" @bind-Value="_price" Label="Цена" Clearable="true" Variant="Variant.Outlined">@foreach (var shelf in Taxonomy.Shelves) { <MudSelectItem T="string" Value="@shelf.Key">@shelf.Name</MudSelectItem> }</MudSelect></MudItem>
+    <MudItem xs="12" md="2"><MudSelect T="DeckStatus?" @bind-Value="_deck" Label="Deck" Clearable="true" Variant="Variant.Outlined"><MudSelectItem T="DeckStatus?" Value="DeckStatus.Verified">Проверена</MudSelectItem><MudSelectItem T="DeckStatus?" Value="DeckStatus.Playable">Играбельна</MudSelectItem></MudSelect></MudItem>
+    <MudItem xs="12" md="2"><MudSelect T="string" @bind-Value="_multi" Label="Мультиплеер" Variant="Variant.Outlined"><MudSelectItem T="string" Value="@("any")">Не важно</MudSelectItem><MudSelectItem T="string" Value="@("yes")">Да</MudSelectItem><MudSelectItem T="string" Value="@("no")">Нет</MudSelectItem></MudSelect></MudItem>
+</MudGrid>
+<MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="Run">Посчитать</MudButton>
+@if (_report is not null)
+{
+    <MudGrid Class="mt-3">
+        <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">Похожих в базе<MudText Typo="Typo.h6">@_report.Matched</MudText></MudPaper></MudItem>
+        <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true"><MetricLabel Id="median" /><MudText Typo="Typo.h6">@Fmt.N(_report.Median)</MudText></MudPaper></MudItem>
+        <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true"><MetricLabel Id="p75" /><MudText Typo="Typo.h6">@Fmt.N(_report.P75)</MudText></MudPaper></MudItem>
+        <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true"><MetricLabel Id="p90" /><MudText Typo="Typo.h6">@Fmt.N(_report.P90)</MudText></MudPaper></MudItem>
+    </MudGrid>
+    <MudText Typo="Typo.h6" Class="mt-3">Шанс набрать отзывы</MudText>
+    <MudTable Items="_report.Chances" Dense="true">
+        <HeaderContent><MudTh>Порог</MudTh><MudTh>Похожие игры</MudTh><MudTh>Весь Steam</MudTh></HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Threshold</MudTd>
+            <MudTd>@Fmt.Chance(context.Chance)</MudTd>
+            <MudTd>@Fmt.Chance(context.Steam)</MudTd>
+        </RowTemplate>
+    </MudTable>
+    <MudAlert Severity="Severity.Info" Class="mt-3">
+        @_report.TypicalOwners.Caption типичной игры: @Fmt.N(_report.TypicalOwners.Typical). Лучшие 10%: @Fmt.N(_report.TopOwners.Typical).
+        @if (_live is null)
+        {
+            <span> Живой счётчик ещё не запрашивался. Оценка конкурентов по базе: @_report.EstimatedCompetitors.</span>
+        }
+        else if (_live.Total is int total)
+        {
+            <span> Один запрос поиска Steam: конкурентов @total. @(_live.Note)</span>
+        }
+        else
+        {
+            <span> Живой запрос не удался (@_live.Error). Оценка по базе: @_report.EstimatedCompetitors.</span>
+        }
+    </MudAlert>
+    <MudGrid Class="mt-2">
+        <MudItem xs="12" md="6">
+            <MudText Typo="Typo.h6">Что добавить</MudText>
+            @foreach (var item in _report.Add)
+            {
+                <MudText>@item.Tag: медиана @Fmt.N(item.MedianWith) против @Fmt.N(item.MedianWithout) без него</MudText>
+            }
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudText Typo="Typo.h6">Чего избегать</MudText>
+            @foreach (var item in _report.Avoid)
+            {
+                <MudText>@item.Tag: медиана @Fmt.N(item.MedianWith) против @Fmt.N(item.MedianWithout) без него</MudText>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<int> InitialTags { get; set; } = [];
+    private IReadOnlyList<int> _tags = [];
+    private string? _genre;
+    private string? _platform;
+    private string? _price;
+    private DeckStatus? _deck;
+    private string _multi = "any";
+    private bool _busy;
+    private IdeaReport? _report;
+    private LiveCount? _live;
+    private string? _applied;
+
+    private IEnumerable<(int Id, string Name)> TagOptions => Snap.Segments.Where(segment => segment.SteamTagId is not null).Select(segment => (Id: segment.SteamTagId!.Value, Name: segment.Name)).Distinct().OrderBy(item => item.Name);
+    private IEnumerable<string> Genres => Snap.Games.SelectMany(game => game.Genres).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(name => name);
+
+    protected override void OnParametersSet()
+    {
+        var key = string.Join(',', InitialTags);
+        if (key == _applied || InitialTags.Count == 0)
+            return;
+        _applied = key;
+        _tags = InitialTags.ToList();
+    }
+
+    private void OnTags(IEnumerable<int> values) => _tags = values.ToList();
+
+    private async Task Run()
+    {
+        _busy = true;
+        var request = new IdeaRequest
+        {
+            TagIds = _tags.ToList(),
+            Genre = _genre,
+            Platform = _platform,
+            PriceShelfKey = _price,
+            Deck = _deck,
+            Multiplayer = _multi switch { "yes" => true, "no" => false, _ => null }
+        };
+        _report = AnalyticsEngine.Idea(Snap, Window, request, Today);
+        _live = await Search.CountAsync(request);
+        _busy = false;
+    }
+}

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SteamDB.Infrastructure\SteamDB.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazor-ApexCharts" Version="7.0.0" GeneratePathProperty="true" />
+    <PackageReference Include="MudBlazor" Version="9.11.0" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <Target Name="MirrorExternalStaticAssets" AfterTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <_MudAsset Include="$(PkgMudBlazor)\staticwebassets\**\*.*" />
+      <_ApexAsset Include="$(PkgMudBlazor)\..\..\blazor-apexcharts\7.0.0\staticwebassets\**\*.*" />
+      <_FrameworkAsset Include="$(PkgMudBlazor)\..\..\microsoft.aspnetcore.app.internal.assets\10.*\_framework\blazor.web.js" />
+      <_FrameworkAsset Include="$(PkgMudBlazor)\..\..\microsoft.aspnetcore.app.internal.assets\10.*\_framework\blazor.server.js" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_MudAsset)" DestinationFiles="@(_MudAsset->'$(MSBuildProjectDirectory)\wwwroot\_content\MudBlazor\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ApexAsset)" DestinationFiles="@(_ApexAsset->'$(MSBuildProjectDirectory)\wwwroot\_content\Blazor-ApexCharts\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_FrameworkAsset)" DestinationFiles="@(_FrameworkAsset->'$(MSBuildProjectDirectory)\wwwroot\_framework\%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <DefaultItemExcludes>$(DefaultItemExcludes);wwwroot\_framework\**;wwwroot\_content\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+</Project>

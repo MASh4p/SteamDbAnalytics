@@ -1,0 +1,98 @@
+@page "/overview"
+@using ApexCharts
+@inherits AnalyticsPage
+
+<PageTitle>Обзор</PageTitle>
+<MudText Typo="Typo.h4">Обзор</MudText>
+<MudText Class="steam-muted mb-4">Состояние магазина Steam по собранным данным. Цифры учитывают фильтры «18+», «0 отзывов» и «Мин. отзывов» в шапке.</MudText>
+<BiasNote />
+@if (Snap.Games.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">База пустая. Кнопка «Обновить» в шапке запустит быстрый старт.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3" Class="mb-2">
+        @foreach (var card in Cards)
+        {
+            <MudItem xs="6" sm="4" md="3" lg="2">
+                <MudPaper Class="pa-4 steam-card" Outlined="true">
+                    <Kpi Label="@card.Label" Value="@card.Value" Hint="@card.Hint" Formula="@card.Formula" Tip="@card.Tip" Large="true" />
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-4 steam-card" Outlined="true">
+                <div class="steam-section-title">Главные выводы</div>
+                @foreach (var line in Report.Conclusions)
+                {
+                    <div class="steam-insight">@line</div>
+                }
+                <MudButton Href="/" Variant="Variant.Text" Color="MudBlazor.Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward">Все выводы для разработчика</MudButton>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="7">
+            <MudPaper Class="pa-4 mb-3" Outlined="true">
+                <div class="steam-section-title">Сколько отзывов набирают игры</div>
+                <ApexChart TItem="BucketCount" Options="_bars" Height="260">
+                    <ApexPointSeries TItem="BucketCount" Items="Report.ReviewBuckets" Name="Игры" SeriesType="SeriesType.Bar" XValue="@(item => item.Label)" YValue="@(item => (decimal?)item.Count)" />
+                </ApexChart>
+            </MudPaper>
+            <MudPaper Class="pa-4" Outlined="true">
+                <div class="steam-section-title">По годам выхода</div>
+                <ApexChart TItem="YearCohort" Options="_years" Height="260">
+                    <ApexPointSeries TItem="YearCohort" Items="Report.Cohorts" Name="Игры" SeriesType="SeriesType.Bar" XValue="@(item => item.Year.ToString())" YValue="@(item => (decimal?)item.Games)" />
+                </ApexChart>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+    <MudText Typo="Typo.h6" Class="mt-4">Топ ниш по нижней границе шанса</MudText>
+    <SegmentGrid Items="Report.TopNiches" FileName="niches" />
+    <div class="steam-section-title mt-4">Самые отзываемые</div>
+    <GameList Games="Report.MostReviewed" />
+    <div class="steam-section-title mt-4">Горячее</div>
+    @if (!Report.HotAvailable)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Labels.HotEmpty</MudAlert>
+    }
+    else
+    {
+        <GameList Games="Report.Hottest.Select(item => item.Game).ToList()" />
+    }
+}
+
+@code {
+    private OverviewReport Report => AnalyticsEngine.Overview(Snap, Window, Today);
+    private ApexChartOptions<BucketCount> _bars = ChartOptions<BucketCount>();
+    private ApexChartOptions<YearCohort> _years = ChartOptions<YearCohort>();
+
+    private IEnumerable<(string Label, string Value, string? Hint, string? Formula, string? Tip)> Cards
+    {
+        get
+        {
+            var steam = Report.Steam;
+            (string Id, string Value, string? Hint)[] raw =
+            [
+                ("store", Fmt.I(steam.StoreCount ?? steam.Collected), $"в базе {Fmt.I(steam.Collected)}"),
+                ("no-reviews", Fmt.P(steam.ShareWithoutReviews), "среди игр с известными отзывами"),
+                ("median", Fmt.N(steam.MedianReviews), $"порог шапки {Window.MedianMinReviews}"),
+                ("p90", Fmt.N(steam.P90), "отзывов"),
+                ("chance", Fmt.Chance(steam.Chance), $"порог успеха {Window.SuccessThreshold}"),
+                ("quality", Fmt.P(steam.AveragePositiveRatio), "средняя доля положительных")
+            ];
+            foreach (var item in raw)
+            {
+                var info = MetricCatalog.Get(item.Id);
+                yield return (info.Name, item.Value, item.Hint, info.Formula, info.Meaning);
+            }
+        }
+    }
+
+    private static ApexChartOptions<T> ChartOptions<T>() where T : class => new()
+    {
+        Chart = new Chart { Background = "transparent", Toolbar = new Toolbar { Show = false } },
+        Theme = new Theme { Mode = Mode.Dark }
+    };
+}

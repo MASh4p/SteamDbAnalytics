@@ -1,0 +1,50 @@
+@inherits AnalyticsPage
+
+@{
+    var overview = AnalyticsEngine.Overview(Snap, Window, Today);
+    var factors = AnalyticsEngine.Factors(Snap, Window, Today);
+}
+<MudGrid>
+    <MudItem xs="12" md="7">
+        <MudText Typo="Typo.h6">Автоматические заключения</MudText>
+        <MudList T="string">
+            @foreach (var line in overview.Conclusions)
+            {
+                <MudListItem T="string">@line</MudListItem>
+            }
+        </MudList>
+        <MudText Typo="Typo.h6" Class="mt-3">От чего зависит число отзывов</MudText>
+        @if (!factors.ModelReady)
+        {
+            <MudAlert Severity="Severity.Info">Модель не считается, пока прочитанных карточек меньше 200. Сейчас @factors.SampleSize. <MudLink Href="/?tab=factors">Все факторы</MudLink></MudAlert>
+        }
+        else
+        {
+            <MudText>Удвоение возраста: ×@Fmt.N(factors.AgeDoubling, "0.00"). Удвоение числа скриншотов: ×@Fmt.N(factors.ScreenshotDoubling, "0.00"). Возраст в модели постоянный.</MudText>
+            <MudTable Items="factors.Rows.Where(row => row.Starred).Take(6)" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Признак</MudTh>
+                    <MudTh>Шанс с признаком</MudTh>
+                    <MudTh>Шанс без</MudTh>
+                    <MudTh><MetricLabel Id="multiplier" /></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Name</MudTd>
+                    <MudTd>@Fmt.Chance(context.ChanceWith)</MudTd>
+                    <MudTd>@Fmt.Chance(context.ChanceWithout)</MudTd>
+                    <MudTd>@(context.Multiplier is null ? "—" : "×" + context.Multiplier.Value.ToString("0.00") + (context.Starred ? "*" : ""))</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudLink Href="/?tab=factors">Все факторы</MudLink>
+        }
+    </MudItem>
+    <MudItem xs="12" md="5">
+        <MudText Typo="Typo.h6">Как читать</MudText>
+        <MudList T="string" Dense="true">
+            @foreach (var note in AnalyticsEngine.ReadingNotes)
+            {
+                <MudListItem T="string">@note</MudListItem>
+            }
+        </MudList>
+    </MudItem>
+</MudGrid>

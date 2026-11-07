@@ -1,0 +1,79 @@
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+    <MudSwitch @bind-Value="_showSmall" Color="Color.Primary" Label="Показывать малые" />
+    <MudText Typo="Typo.caption" Class="steam-muted">Скрыто малых: @Hidden</MudText>
+    <MudSpacer />
+    <ExportButtons FileName="@FileName" Headers="@Headers" Rows="@ExportRows" />
+</MudStack>
+<MudTable Items="Visible" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" RowsPerPage="25" Elevation="0" Class="steam-table">
+    <HeaderContent>
+        <MudTh>Сегмент</MudTh>
+        <MudTh><MetricLabel Id="store" /></MudTh>
+        @if (Catalog)
+        {
+            <MudTh><MetricLabel Id="growth" /></MudTh>
+            <MudTh>Уже в базе</MudTh>
+        }
+        else
+        {
+            <MudTh>С отзывами ≥ порога</MudTh>
+            <MudTh><MetricLabel Id="median" /></MudTh>
+            <MudTh><MetricLabel Id="smoothed" /></MudTh>
+            <MudTh><MetricLabel Id="p75" /></MudTh>
+            <MudTh><MetricLabel Id="p90" /></MudTh>
+            <MudTh><MetricLabel Id="chance" /></MudTh>
+            <MudTh><MetricLabel Id="trend" /></MudTh>
+            <MudTh><MetricLabel Id="entry" /></MudTh>
+            <MudTh><MetricLabel Id="opportunity" /></MudTh>
+            <MudTh><MetricLabel Id="quadrant" /></MudTh>
+        }
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>
+            @context.Metrics.Name
+            @if (context.Metrics.SmallSample)
+            {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ml-1">мало данных</MudChip>
+            }
+        </MudTd>
+        <MudTd>@Fmt.I(context.Metrics.StoreCount ?? context.Metrics.Collected)</MudTd>
+        @if (Catalog)
+        {
+            <MudTd>@Fmt.I(context.Metrics.SizeGrowth)</MudTd>
+            <MudTd>@Fmt.I(context.Metrics.Collected)</MudTd>
+        }
+        else
+        {
+            <MudTd>@context.Metrics.MedianSample</MudTd>
+            <MudTd>@Fmt.N(context.Metrics.MedianReviews)</MudTd>
+            <MudTd>@Fmt.N(context.Metrics.SmoothedMedian)</MudTd>
+            <MudTd>@Fmt.N(context.Metrics.P75)</MudTd>
+            <MudTd>@Fmt.N(context.Metrics.P90)</MudTd>
+            <MudTd>@Fmt.Chance(context.Metrics.Chance)</MudTd>
+            <MudTd>@Fmt.Signed(context.Metrics.Trend)</MudTd>
+            <MudTd>@Fmt.N(context.Metrics.EntryThreshold)</MudTd>
+            <MudTd>@context.Opportunity.ToString("0")</MudTd>
+            <MudTd>@Labels.Quadrant(context.Quadrant)</MudTd>
+        }
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    [Parameter] public IReadOnlyList<ScoredSegment> Items { get; set; } = [];
+    [Parameter] public string FileName { get; set; } = "segments";
+    [Parameter] public bool Catalog { get; set; }
+    private bool _showSmall;
+
+    private int Hidden => Items.Count(item => item.Metrics.SmallSample);
+    private IEnumerable<ScoredSegment> Visible => _showSmall ? Items : Items.Where(item => !item.Metrics.SmallSample);
+
+    private IReadOnlyList<string> Headers => Catalog
+        ? ["Сегмент", "Игр в магазине", "Прирост", "Уже в базе"]
+        : ["Сегмент", "Игр в магазине", "Выборка медианы", "Медиана", "Сглаженная", "P75", "P90", "Шанс", "Тренд", "Порог входа", "Opportunity", "Квадрант"];
+
+    private IReadOnlyList<IReadOnlyList<string?>> ExportRows => Visible.Select(item => Catalog
+        ? (IReadOnlyList<string?>)[item.Metrics.Name, Fmt.I(item.Metrics.StoreCount), Fmt.I(item.Metrics.SizeGrowth), Fmt.I(item.Metrics.Collected)]
+        : [item.Metrics.Name, Fmt.I(item.Metrics.StoreCount ?? item.Metrics.Collected), item.Metrics.MedianSample.ToString(), Fmt.N(item.Metrics.MedianReviews), Fmt.N(item.Metrics.SmoothedMedian), Fmt.N(item.Metrics.P75), Fmt.N(item.Metrics.P90), Fmt.Chance(item.Metrics.Chance), Fmt.Signed(item.Metrics.Trend), Fmt.N(item.Metrics.EntryThreshold), item.Opportunity.ToString("0"), Labels.Quadrant(item.Quadrant)]).ToList();
+}

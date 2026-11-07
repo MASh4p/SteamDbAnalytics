@@ -1,0 +1,128 @@
+@page "/collection"
+@implements IDisposable
+@inject ICollectionController Collector
+@inject ICollectionBoardSource BoardSource
+@inject ISettingsStore Settings
+
+<PageTitle>Сбор данных</PageTitle>
+<MudText Typo="Typo.h4">Сбор данных</MudText>
+<MudText Class="steam-muted mb-4">Сбор идёт, только пока приложение открыто. Длинный список не помечается пустым.</MudText>
+<MudPaper Class="pa-3 mb-3" Outlined="true">
+    <MudText Typo="Typo.h6">@Collector.Status.Title</MudText>
+    <MudText>@Collector.Status.Detail</MudText>
+    @if (!string.IsNullOrWhiteSpace(Collector.Status.LastError))
+    {
+        <MudText Color="Color.Warning">@Collector.Status.LastError</MudText>
+    }
+    <MudStack Row="true" Class="mt-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Collector.EnqueueAsync(CollectionProfile.QuickStart))">Быстрый старт</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => Collector.EnqueueAsync(CollectionProfile.Daily))">Ежедневное обновление</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => Collector.EnqueueAsync(CollectionProfile.Deep))">Глубокий сбор, порция</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => Collector.EnqueueAsync(CollectionProfile.CardBackfill))">Дочитать карточки</MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="Collector.RequestStop">Остановить</MudButton>
+    </MudStack>
+    <MudText Typo="Typo.caption" Class="mt-2">Сбор идёт, только пока приложение открыто. Длинный список не помечается пустым: он режется фильтрами или откладывается. На 429, 403 и 5xx после повторов сбор останавливается.</MudText>
+</MudPaper>
+<MudText Typo="Typo.h6">Очередь глубокого сбора: в работе @_board.Pending, отложено @_board.Deferred</MudText>
+<MudTable Items="_board.Slices" Dense="true" Hover="true" Class="mb-4">
+    <HeaderContent><MudTh>Срез</MudTh><MudTh>Статус</MudTh><MudTh>total_count</MudTh><MudTh>Страниц</MudTh><MudTh>Заметка</MudTh></HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Key</MudTd>
+        <MudTd>@Ru(context.Status)</MudTd>
+        <MudTd>@Fmt.I(context.TotalCount)</MudTd>
+        <MudTd>@context.PagesFetched</MudTd>
+        <MudTd>@context.Note</MudTd>
+    </RowTemplate>
+</MudTable>
+<MudText Typo="Typo.h6">Ошибки сети и разбора</MudText>
+<MudTable Items="_board.Errors" Dense="true" Class="mb-4">
+    <HeaderContent><MudTh>Когда</MudTh><MudTh>Тип</MudTh><MudTh>Код</MudTh><MudTh>Сообщение</MudTh></HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.At.ToLocalTime().ToString("g")</MudTd>
+        <MudTd>@context.Kind</MudTd>
+        <MudTd>@context.StatusCode</MudTd>
+        <MudTd>@context.Message</MudTd>
+    </RowTemplate>
+</MudTable>
+<MudText Typo="Typo.h6">История запусков</MudText>
+<MudTable Items="_board.Runs" Dense="true" Class="mb-4">
+    <HeaderContent><MudTh>Профиль</MudTh><MudTh>Старт</MudTh><MudTh>Статус</MudTh><MudTh>Запросы</MudTh><MudTh>Сообщение</MudTh></HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Profile</MudTd>
+        <MudTd>@context.StartedAt.ToLocalTime().ToString("g")</MudTd>
+        <MudTd>@context.Status</MudTd>
+        <MudTd>@context.Requests</MudTd>
+        <MudTd>@context.Message</MudTd>
+    </RowTemplate>
+</MudTable>
+<MudText Typo="Typo.h6">Настройки</MudText>
+@if (_form is not null)
+{
+    <MudGrid>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.MinDelayMs" Label="Пауза, мс" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.JitterMs" Label="Джиттер, мс" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.MaxConcurrency" Label="Параллелизм 1–2" Variant="Variant.Outlined" Min="1" Max="2" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.MaxRetries" Label="Повторы на 429/403/5xx" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.SuccessReviewThreshold" Label="Порог успеха, отзывы" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.MinSegmentSample" Label="Минимальная выборка сегмента" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.SmoothingK" Label="k сглаживания" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.BayesianM" Label="m байесовской оценки" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="3"><MudNumericField T="double" @bind-Value="_form.WeightDemand" Label="Вес спроса" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="3"><MudNumericField T="double" @bind-Value="_form.WeightSuccess" Label="Вес успеха" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="3"><MudNumericField T="double" @bind-Value="_form.WeightCompetition" Label="Вес низкой конкуренции" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="3"><MudNumericField T="double" @bind-Value="_form.WeightTrend" Label="Вес тренда" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="double" @bind-Value="_form.HotOnlineWeight" Label="Hot: вес онлайна a" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="double" @bind-Value="_form.HotPositionWeight" Label="Hot: вес позиции b" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="double" @bind-Value="_form.HotAgeExponent" Label="Hot: степень возраста g" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="double" @bind-Value="_form.ReviewRate" Label="Доля отзывов от владельцев" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="double" @bind-Value="_form.ReviewRateMin" Label="Нижняя доля" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="double" @bind-Value="_form.ReviewRateMax" Label="Верхняя доля" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.QuickTagCount" Label="Быстрый старт: тегов" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.QuickDetailBudget" Label="Быстрый старт: карточек" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.DailyRefreshBudget" Label="Сутки: обновлений" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.DeepSearchPagesPerRun" Label="Глубокий: страниц за запуск" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.DeepDetailBudgetPerRun" Label="Глубокий: карточек за запуск" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.DeepMinSegmentSize" Label="Глубокий: размер сегмента" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.MaxPagesBeforeSplit" Label="Страниц до разрезания" Variant="Variant.Outlined" /></MudItem>
+        <MudItem xs="12" md="4"><MudNumericField T="int" @bind-Value="_form.SearchPageSize" Label="Размер страницы поиска" Variant="Variant.Outlined" /></MudItem>
+    </MudGrid>
+    <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Сохранить настройки</MudButton>
+}
+
+@code {
+    private CollectionBoard _board = new([], [], [], 0, 0);
+    private AppSettings? _form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Collector.Changed += Refresh;
+        _form = Settings.Current;
+        _board = await BoardSource.LoadAsync();
+    }
+
+    private async void Refresh() => await InvokeAsync(async () =>
+    {
+        _board = await BoardSource.LoadAsync();
+        StateHasChanged();
+    });
+
+    private async Task Save()
+    {
+        if (_form is null)
+            return;
+        await Settings.SaveAsync(_form);
+    }
+
+    private static string Ru(string status) => status switch
+    {
+        "Pending" => "В очереди",
+        "Partial" => "Частично",
+        "Complete" => "Пройден",
+        "Empty" => "Пусто",
+        "Split" => "Разрезан",
+        "Deferred" => "Отложен",
+        _ => status
+    };
+
+    public void Dispose() => Collector.Changed -= Refresh;
+}

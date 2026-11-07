@@ -1,0 +1,140 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject ISettingsStore Settings
+@inject ICollectionController Collection
+@inject NavigationManager Nav
+
+<MudThemeProvider Theme="_theme" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="0" Dense="true" Class="steam-appbar">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@(() => _drawerOpen = !_drawerOpen)" aria-label="Меню" />
+        <MudText Typo="Typo.h6" Class="ml-2 steam-logo">Steam<span>DB</span></MudText>
+        <MudText Typo="Typo.caption" Class="ml-3 steam-muted d-none d-md-flex">локальная аналитика Steam</MudText>
+        <MudSpacer />
+
+        <div class="d-flex align-center gap-1 mr-3">
+            @if (Collection.Status.State == RunState.Running)
+            {
+                <MudTooltip Text="@($"{Collection.Status.Title}. {Collection.Status.Detail}")">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" OnClick="@(() => Nav.NavigateTo("/collection"))">
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" Style="width:14px;height:14px" />
+                        @Collection.Status.Title
+                    </MudChip>
+                </MudTooltip>
+                <MudTooltip Text="Остановить. Прогресс сохранится.">
+                    <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" OnClick="Collection.RequestStop" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudTooltip Text="Если базы нет, запустится быстрый старт. Иначе — ежедневное обновление.">
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="StartDaily">
+                        Обновить
+                    </MudButton>
+                </MudTooltip>
+                @if (!string.IsNullOrWhiteSpace(Collection.Status.LastError))
+                {
+                    <MudTooltip Text="@Collection.Status.LastError">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning" OnClick="@(() => Nav.NavigateTo("/collection"))">Остановка</MudChip>
+                    </MudTooltip>
+                }
+            }
+        </div>
+
+        <MudTooltip Text="Включено — показывать игры 18+. По умолчанию они скрыты: иначе смещаются топы и медианы.">
+            <MudSwitch T="bool" @bind-Value="_showAdult" @bind-Value:after="PersistAdult" Color="Color.Primary" Label="18+" Class="mr-3" />
+        </MudTooltip>
+        <MudTooltip Text="Включено: шанс и конкуренция делят на total_count магазина. Выключено: только среди игр с хотя бы одним отзывом. Медиана от этого не зависит.">
+            <MudSwitch T="bool" @bind-Value="_includeEmpty" @bind-Value:after="PersistInclude" Color="Color.Primary" Label="0 отзывов" Class="mr-3" />
+        </MudTooltip>
+        <MudTooltip Text="Медианы считаются только по играм, у которых отзывов не меньше порога.">
+            <MudSelect T="int" Value="_minReviews" ValueChanged="SetMin" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Мин. отзывов" Class="steam-min-select mr-2">
+                @foreach (var value in Thresholds.Append(_minReviews).Distinct().Order())
+                {
+                    <MudSelectItem T="int" Value="value">@($"≥ {value}")</MudSelectItem>
+                }
+            </MudSelect>
+        </MudTooltip>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0" Variant="DrawerVariant.Mini" OpenMiniOnHover="false">
+        <NavMenu Mini="@(!_drawerOpen)" />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="py-4 px-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private static readonly int[] Thresholds = [0, 10, 50, 100, 500];
+    private static readonly MudTheme _theme = new()
+    {
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#67c1f5",
+            Background = "#0e141b",
+            Surface = "#1b2838",
+            AppbarBackground = "#171a21",
+            DrawerBackground = "#171a21",
+            TextPrimary = "#e8eef4",
+            TextSecondary = "#a8b6c4",
+            Divider = "#2a3a4a",
+            TableLines = "#2a3a4a",
+            DrawerText = "#e8eef4",
+            DrawerIcon = "#a8b6c4"
+        }
+    };
+
+    private bool _drawerOpen = true;
+    private bool _showAdult;
+    private int _minReviews = 50;
+    private bool _includeEmpty;
+
+    protected override void OnInitialized()
+    {
+        Pull();
+        Settings.Changed += OnChanged;
+        Collection.Changed += OnChanged;
+    }
+
+    private void Pull()
+    {
+        var current = Settings.Current;
+        _showAdult = !current.HideAdult;
+        _minReviews = current.MedianMinReviews;
+        _includeEmpty = current.IncludeGamesWithoutReviews;
+    }
+
+    private void OnChanged() => InvokeAsync(() =>
+    {
+        Pull();
+        StateHasChanged();
+    });
+
+    private Task PersistAdult() => Save(copy => copy.HideAdult = !_showAdult);
+    private Task SetMin(int value) => Save(copy => copy.MedianMinReviews = value);
+    private Task PersistInclude() => Save(copy => copy.IncludeGamesWithoutReviews = _includeEmpty);
+
+    private async Task Save(Action<AppSettings> mutate)
+    {
+        var copy = Settings.Current;
+        mutate(copy);
+        await Settings.SaveAsync(copy);
+    }
+
+    private Task StartDaily() => Collection.EnqueueAsync(CollectionProfile.Daily).AsTask();
+
+    public void Dispose()
+    {
+        Settings.Changed -= OnChanged;
+        Collection.Changed -= OnChanged;
+    }
+}

@@ -1,0 +1,65 @@
+@page "/publishers"
+@inherits AnalyticsPage
+
+<PageTitle>Разработчики и издатели</PageTitle>
+<MudText Typo="Typo.h4" Class="mb-3">Разработчики и издатели</MudText>
+<MudTabs @bind-ActivePanelIndex="_tab">
+    <MudTabPanel Text="Разработчики" />
+    <MudTabPanel Text="Издатели" />
+</MudTabs>
+@{
+    var report = AnalyticsEngine.Creators(Snap, Window, _tab == 1);
+}
+<MudGrid Class="my-3">
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">Авторов<MudText Typo="Typo.h6">@report.Authors</MudText></MudPaper></MudItem>
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">С одной игрой<MudText Typo="Typo.h6">@report.SingleGameAuthors</MudText></MudPaper></MudItem>
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">Доля отзывов у топ-1%<MudText Typo="Typo.h6">@Fmt.P(report.TopOnePercentShare)</MudText></MudPaper></MudItem>
+    <MudItem xs="6" md="3"><MudPaper Class="pa-3" Outlined="true">Медиана аудитории, отзывы<MudText Typo="Typo.h6">@Fmt.N(report.MedianAudienceReviews)</MudText></MudPaper></MudItem>
+</MudGrid>
+<MudText Typo="Typo.h6">Опыт</MudText>
+<MudTable Items="report.Experience" Dense="true" Hover="true" Class="mb-4">
+    <HeaderContent>
+        <MudTh>Игр у автора</MudTh>
+        <MudTh>Авторов</MudTh>
+        <MudTh><MetricLabel Id="median" /></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Label</MudTd>
+        <MudTd>@context.Authors</MudTd>
+        <MudTd>@Fmt.N(context.MedianReviews)</MudTd>
+    </RowTemplate>
+</MudTable>
+<MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
+    <ExportButtons FileName="creators" Headers="@_headers" Rows="@Rows(report)" />
+</MudStack>
+<MudTable Items="report.Rows" Dense="true" Hover="true" RowsPerPage="25">
+    <HeaderContent>
+        <MudTh>Имя</MudTh>
+        <MudTh>
+            <MudTooltip Text="Подписчики пишутся только если встретились в уже полученном публичном ответе. Иначе поле пустое: число не выдумывается.">
+                <span class="metric-label">Подписчики</span>
+            </MudTooltip>
+        </MudTh>
+        <MudTh>Игр в базе</MudTh>
+        <MudTh>Отзывов всего</MudTh>
+        <MudTh><MetricLabel Id="median" /></MudTh>
+        <MudTh>Лучшая игра</MudTh>
+        <MudTh><MetricLabel Id="growth" /></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>@(context.Followers is null ? "—" : Fmt.I(context.Followers))</MudTd>
+        <MudTd>@context.GameCount</MudTd>
+        <MudTd>@Fmt.I(context.TotalReviews)</MudTd>
+        <MudTd>@Fmt.N(context.MedianReviews)</MudTd>
+        <MudTd>@if (context.BestAppId is int appId) { <MudLink Href="@($"/games/{appId}")">@context.BestGame</MudLink> }</MudTd>
+        <MudTd>@(context.ReviewGrowth30 is null && context.PlayerGrowth30 is null ? "нет снимка за 30 дней" : $"отзывы {Fmt.I(context.ReviewGrowth30)}, онлайн {Fmt.I(context.PlayerGrowth30)}")</MudTd>
+    </RowTemplate>
+    <PagerContent><MudTablePager /></PagerContent>
+</MudTable>
+
+@code {
+    private int _tab;
+    private readonly string[] _headers = ["Имя", "Подписчики", "Игр", "Отзывов", "Медиана", "Лучшая игра", "Прирост отзывов", "Прирост онлайна"];
+    private IReadOnlyList<IReadOnlyList<string?>> Rows(CreatorSummary report) => report.Rows.Select(row => (IReadOnlyList<string?>)[row.Name, Fmt.I(row.Followers), row.GameCount.ToString(), row.TotalReviews.ToString(), Fmt.N(row.MedianReviews), row.BestGame, Fmt.I(row.ReviewGrowth30), Fmt.I(row.PlayerGrowth30)]).ToList();
+}

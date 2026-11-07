@@ -1,0 +1,35 @@
+@inherits AnalyticsPage
+
+<MudStack Row="true" Class="mb-3">
+    <MudTextField @bind-Value="_search" Label="Поиск тега" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+    <MudNumericField T="int" @bind-Value="_min" Label="Минимум игр в паре" Variant="Variant.Outlined" Margin="Margin.Dense" Min="5" />
+</MudStack>
+<MudTable Items="Rows" Dense="true" Hover="true" RowsPerPage="25">
+    <HeaderContent>
+        <MudTh>Пара</MudTh>
+        <MudTh>Игр</MudTh>
+        <MudTh>Медиана пары</MudTh>
+        <MudTh>Медиана A</MudTh>
+        <MudTh>Медиана B</MudTh>
+        <MudTh><MetricLabel Id="lift" /></MudTh>
+        <MudTh><MetricLabel Id="chance" /></MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@($"{context.NameA} + {context.NameB}")</MudTd>
+        <MudTd>@context.Count @if (context.SmallSample) { <MudChip T="string" Size="Size.Small">малая</MudChip> }</MudTd>
+        <MudTd>@Fmt.N(context.MedianPair)</MudTd>
+        <MudTd>@Fmt.N(context.MedianA)</MudTd>
+        <MudTd>@Fmt.N(context.MedianB)</MudTd>
+        <MudTd>@Fmt.N(context.Lift, "0.00")</MudTd>
+        <MudTd>@Fmt.Chance(context.Chance)</MudTd>
+        <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Href="@($"/?tab=idea&tags={context.TagIdA},{context.TagIdB}")">Проверить идею</MudButton></MudTd>
+    </RowTemplate>
+    <PagerContent><MudTablePager /></PagerContent>
+</MudTable>
+
+@code {
+    private string? _search;
+    private int _min = 20;
+    private IReadOnlyList<PairReport> Rows => AnalyticsEngine.Pairs(Snap, Window, _min, _search);
+}

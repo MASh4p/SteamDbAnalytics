@@ -1,0 +1,53 @@
+@page "/"
+@page "/developer"
+@inherits AnalyticsPage
+
+<PageTitle>Для разработчика</PageTitle>
+<MudText Typo="Typo.h4">Для разработчика</MudText>
+<MudText Class="steam-muted mb-4">Ниши, форматы и проверка идеи по уже собранным играм. Пока глубокий сбор не закончен, шансы завышены.</MudText>
+<BiasNote />
+<MudTabs @bind-ActivePanelIndex="_tab">
+    <MudTabPanel Text="Выводы"><InsightsTab /></MudTabPanel>
+    <MudTabPanel Text="Карта возможностей"><MapTab /></MudTabPanel>
+    <MudTabPanel Text="Ниши"><SegmentGrid Items="Niches" FileName="opportunity" /></MudTabPanel>
+    <MudTabPanel Text="Форматы"><FormatTab /></MudTabPanel>
+    <MudTabPanel Text="Сочетания тегов"><PairTab /></MudTabPanel>
+    <MudTabPanel Text="Факторы успеха"><FactorTab /></MudTabPanel>
+    <MudTabPanel Text="Проверка идеи"><IdeaTab InitialTags="_tags" /></MudTabPanel>
+</MudTabs>
+
+@code {
+    private int _tab;
+    private IReadOnlyList<int> _tags = [];
+    private IReadOnlyList<ScoredSegment> Niches => AnalyticsEngine.Segments(Snap, Window, Today, null)
+        .Where(item => item.Metrics.Kind is SegmentKind.Tag or SegmentKind.Genre)
+        .OrderByDescending(item => item.Opportunity)
+        .ToList();
+
+    private string? _seen;
+
+    [SupplyParameterFromQuery(Name = "tab")] public string? Tab { get; set; }
+    [SupplyParameterFromQuery(Name = "tags")] public string? Tags { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        var key = (Tab ?? "") + "|" + (Tags ?? "");
+        if (key == _seen)
+            return;
+        _seen = key;
+        _tab = Tab switch
+        {
+            "map" => 1,
+            "niches" => 2,
+            "formats" => 3,
+            "pairs" => 4,
+            "factors" => 5,
+            "idea" => 6,
+            _ => 0
+        };
+        _tags = (Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => int.TryParse(value, out var id) ? id : 0)
+            .Where(id => id > 0)
+            .ToList();
+    }
+}
